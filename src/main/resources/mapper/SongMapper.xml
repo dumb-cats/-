@@ -1,0 +1,63 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+        PUBLIC "-//mybatis.org//DTD mapper 3.0//EN"
+        "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--Javaweb是一个类接受查询的结果。
+注意：该类中的属性名必须与返回的表的字段名一一对应且完全一样-->
+<!--sql映射文件-->
+<mapper namespace="mapper.SongMapper">
+    <update id="updateById">
+        update song
+        <set>
+            <if test="songname != null and songname != '' ">
+                songname=#{songname},
+            </if>
+            <if test="songtype != null and songtype != '' ">
+                songtype=#{songtype},
+            </if>
+            <if test="singerid != null and singerid != ''">
+                singerid=#{singerid}
+            </if>
+        </set>
+        where id=#{id}
+    </update>
+
+    <select id="selectAll" resultType="pojo.Song">
+        select s.id,s.songname,s.songtype,si.singername,si.sex,si.age
+        from song as s ,singer as si
+        where singerid=si.id;
+    </select>
+    <select id="selectByPage" resultType="pojo.Song">
+        select s.id,s.songname,s.songtype,si.singername,si.sex,si.age
+        from song as s ,singer as si where singerid=si.id
+        limit #{begin},#{size};
+    </select>
+
+    <select id="selectPageByCondition" resultType="pojo.Song">
+        select s.id,s.songname,s.songtype,si.singername,si.sex,si.age
+        from song as s ,singer as si
+        <where>
+        <if test="1==1">
+            and s.singerid=si.id
+        </if>
+        <if test="songname != null and songname != ''">
+            and s.songname=#{songname}
+        </if>
+            <if test="singername != null and singername != ''">
+            and si.singername=#{singername}
+            </if>
+        </where>
+        limit #{begin},#{size};
+    </select>
+    <select id="selectAllTotalByCondition" resultType="java.lang.Integer">
+        select count(*)
+        from song as s ,singer as si
+        where singerid=si.id
+        <if test="songname != null and songname != '' ">
+            and s.songname=#{songname}
+        </if>
+        <if test="singername !=null and singername !=''">
+            and si.singername=#{singername}
+        </if>
+    </select>
+</mapper>

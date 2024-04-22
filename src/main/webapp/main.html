@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>main</title>
+    <style>
+        .el-table .warning-row {
+            background: oldlace;
+        }
+
+        .el-table .success-row {
+            background: #f0f9eb;
+        }
+        .el-table .success2-row {
+            background: #eeecec;
+        }
+    </style>
+</head>
+<body>
+<div id="app">
+ <!--查询表单-->
+    <el-form :inline="true" :model="serchsong" class="demo-form-inline">
+        <el-form-item label="歌曲">
+            <el-input v-model="serchsong.songname" placeholder="歌曲名"></el-input>
+        </el-form-item>
+        <el-form-item label="歌手">
+            <el-input v-model="serchsong.singername" placeholder="歌手名"></el-input>
+        </el-form-item>
+        <el-form-item>
+            <el-button type="primary" @click="serchonSubmit">查询</el-button>
+        </el-form-item>
+    </el-form>
+ <!--新增-->
+    <el-row>
+        <el-button type="primary" @click="dialogVisible = true" plain>新增</el-button>
+    </el-row>
+    <el-dialog title="添加歌曲"
+            :visible.sync="dialogVisible"
+            width="30%">
+      <!--   新增表单     -->
+        <el-form ref="form" :model="addsong" label-width="80px">
+            <el-form-item label="歌曲名称">
+                <el-input v-model="addsong.songname"></el-input>
+            </el-form-item>
+            <el-form-item label="歌曲类型">
+                <el-input v-model="addsong.songtype"></el-input>
+            </el-form-item>
+            <el-form-item label="歌手姓名">
+                <el-input v-model="addsong.singername"></el-input>
+            </el-form-item>
+            <el-form-item label="歌手年龄">
+                <el-input v-model="addsong.age"></el-input>
+            </el-form-item>
+            <el-form-item label="歌手性别">
+                <el-input v-model="addsong.sex"></el-input>
+            </el-form-item>
+            <el-form-item>
+                <el-button type="primary" @click="addonSubmit">添加</el-button>
+                <el-button @click="dialogVisible = false">取消</el-button>
+            </el-form-item>
+        </el-form>
+    </el-dialog>
+<!--修改-->
+    <el-dialog
+            title="修改"
+            :visible.sync="dialogVisible2"
+            width="30%">
+        <!--   修改表单     -->
+        <el-form ref="form" :model="updatesong" label-width="80px">
+            <el-form-item label="歌曲名称">
+                <el-input v-model="updatesong.songname"></el-input>
+            </el-form-item>
+            <el-form-item label="歌曲类型">
+                <el-input v-model="updatesong.songtype"></el-input>
+            </el-form-item>
+            <el-form-item label="歌手">
+                <el-input v-model="updatesong.singername"></el-input>
+            </el-form-item>
+            <el-form-item>
+                <el-button type="primary" @click="updatonSubmit">提交</el-button>
+                <el-button @click="dialogVisible2 = false">取消</el-button>
+            </el-form-item>
+        </el-form>
+    </el-dialog>
+<!--展示表格-->
+    <template>
+        <el-table
+                :data="tableData"
+                style="width: 100%"
+                :row-class-name="tableRowClassName">
+
+            <el-table-column label="播放链接">
+                <template slot-scope="scope">
+                    <a :href='herf2' class="el-icon-caret-right" @click="handlelisten(scope.$index, scope.row)"></a>
+                </template>
+            </el-table-column>
+            <el-table-column prop="songname" label="歌曲">
+
+            </el-table-column>
+            <el-table-column prop="singername" label="演唱者">
+
+            </el-table-column>
+            <el-table-column prop="songtype" label="类型">
+
+            </el-table-column>
+            <el-table-column label="操作">
+                <template slot-scope="scope">
+                    <el-button
+                            type="primary" icon="el-icon-edit" circle
+                            @click="handleEdit(scope.$index, scope.row)"></el-button>
+                    <el-button
+                            type="danger" icon="el-icon-delete" circle
+                            @click="handleDelete(scope.$index, scope.row)"></el-button>
+
+                </template>
+            </el-table-column>
+        </el-table>
+    </template>
+<!--分页工具条-->
+    <el-pagination
+            @size-change="handleSizeChange"
+            @current-change="handleCurrentChange"
+            :current-page="currentPage"
+            :page-sizes="[5, 10, 15, 20]"
+            :page-size="5"
+            layout="total, sizes, prev, pager, next, jumper"
+            :total="totalCount">
+    </el-pagination>
+</div>
+<!--代码区-->
+<script src="js/vue.js"></script>
+<script src="js/axios-0.18.0.js"></script>
+<script src="element-ui/lib/index.js"></script>
+<link rel="stylesheet" href="element-ui/lib/theme-chalk/index.css">
+<script>
+    new Vue({
+        el:"#app",
+        mounted(){
+            this.selectBypage();
+        },
+        data(){
+            return {
+                //每页多少条
+                pageSize:5,
+                //数据总数
+                totalCount:100,
+                //展示的表格数据（完成）
+                tableData: [],
+                //播放地址（完成）
+                herf2:'',
+                //搜索框(完成）
+                serchsong:{
+                    songname:'',
+                    singername:''
+                },
+                //新增(完成）
+                dialogVisible: false,
+                //修改
+                dialogVisible2: false,
+                //新增表单(完成）
+                addsong: {
+                    songname: '',
+                    singername: '',
+                    songtype: '',
+                    age:'',
+                    sex:''
+                },
+                //修改表单
+                updatesong:{
+                    songname: '',
+                    singername: '',
+                    songtype: '',
+                    id:'',
+                },
+                //分页工具条数据
+                currentPage: 1,
+                //增加后的返回信息
+                add_reg:'',
+                //删除后的返回信息
+                delet_reg:'',
+            }
+        },
+        methods: {
+            //修改表单提交按钮
+            updatonSubmit(){
+                let that=this;
+                axios({
+                    method:"post",
+                    url: "http://localhost/Javaweb_Version1/updateServlet",
+                    data:that.updatesong,
+                }).then(function (resp){
+                    if(resp.data==true){
+                        that.dialogVisible2=false;
+                        that.selectBypage();
+                    }
+                })
+            },
+            //单行修改
+            handleEdit(index, row) {
+                this.dialogVisible2=true;
+                this.updatesong.id=row.id;
+            },
+            //单行删除(完成）
+            handleDelete(index, row) {
+                let that=this;
+                this.$confirm('此操作将永久删除该歌曲, 是否继续?', '提示', {
+                    confirmButtonText: '确定',
+                    cancelButtonText: '取消',
+                    type: 'warning'
+                }).then(() => {
+                    axios({
+                        method:"get",
+                        url:"http://localhost/Javaweb_Version1/deletServlet?songid="+row.id
+                    }).then(function (resp){
+                        that.delet_reg=resp.data
+                        if(that.delet_reg===true){
+                            that.selectBypage();
+                            that.$message({
+                                message: '删除成功',
+                                type: 'success'})
+                        }else {
+                            that.selectBypage();
+                            that.$message.error('删除失败');
+                        }
+                    })
+                }).catch(() => {
+                    this.$message({
+                        type: 'info',
+                        message: '已取消删除'
+                    });
+                });
+
+            },
+            //播放(完成）
+            handlelisten(index, row){
+                this.herf2='https://music.163.com/#/search/m/?s=';
+                this.herf2+=row.songname;
+                console.log(this.herf2);
+            },
+            tableRowClassName({row, rowIndex}) {
+                if (rowIndex%3 === 0) {
+                    return 'warning-row';
+                } else if (rowIndex%3 === 2) {
+                    return 'success-row';
+                }
+                return 'success2-row';
+            },
+            //刷新展示分页(完成）
+            selectBypage()
+            {
+                let that=this;
+                axios({
+                    method:"get",
+                    url:"http://localhost/Javaweb_Version1/selectByCondition?currentpage="+that.currentPage+"&pagesize="
+                        +that.pageSize+"&songname="+that.serchsong.songname+"&singername="+that.serchsong.singername
+                }).then(function (resp){
+                    that.tableData=resp.data.rows;
+                    that.totalCount=resp.data.totalCount;
+                })
+            },
+            //查询数据方法
+            serchonSubmit() {
+                console.log(this.serchsong.songname)
+                this.selectBypage()
+            },
+            //添加数据方法(完成）
+            addonSubmit() {
+                let that=this;
+                axios({
+                    method:"post",
+                    url: "http://localhost/Javaweb_Version1/addServlet",
+                    data:that.addsong,
+                }).then(function (resp){
+                    that.add_reg=resp.data;
+                    if(that.add_reg==true)
+                    {
+                        that.dialogVisible=false;
+                        that.selectBypage()
+                        that.$message({
+                            message: '添加成功',
+                            type: 'success'})
+                    }
+                })
+            },
+            //每页多少条设置（完成）
+            handleSizeChange(val) {
+                this.pageSize=val;
+                this.selectBypage();
+            },
+            //设置当前页数（完成）
+            handleCurrentChange(val) {
+                this.currentPage=val;
+                this.selectBypage()
+            }
+        }
+    })
+</script>
+</body>
+</html>
