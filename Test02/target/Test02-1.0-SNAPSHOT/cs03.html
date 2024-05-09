@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="utf-8">
+    <title>根据城市设置城市中心点</title>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+    <meta http-equiv="X-UA-Compatible" content="IE=Edge">
+    <style>
+        body,
+        html,
+        #app{
+            width: 100%;
+            height: 100%;
+        }
+        #container {
+            overflow: hidden;
+            width: 70%;
+            height: 100%;
+            float: left;
+            font-family: "微软雅黑";
+        }
+        #main{
+            float: right;
+            width: 30%;
+            height: 100%;
+        }
+    </style>
+    <script src="js/vue.js"></script>
+    <script src="js/axios-0.18.0.js"></script>
+    <!-- 引入样式 -->
+    <link href="https://cdn.bootcdn.net/ajax/libs/element-ui/2.15.14/theme-chalk/index.css" rel="stylesheet">
+    <!-- 引入组件库 -->
+    <script src="https://cdn.bootcdn.net/ajax/libs/element-ui/2.15.14/index.js"></script>
+    <script src="//api.map.baidu.com/api?type=webgl&v=1.0&ak=C84rQLEqmTniwdULMk4p9GxB7wEPfQtN"></script>
+    <script type="text/javascript" src="//api.map.baidu.com/library/TrackAnimation/src/TrackAnimation_min.js"></script>
+</head>
+<body>
+<div id="app">
+    <div id="container"></div>
+    <div id="main">
+        <el-tabs type="border-card">
+            <el-tab-pane label="路线选择">
+                <el-form ref="form" :model="chose_form" label-width="80px">
+                    <el-form-item label="出发地">
+                        <el-select v-model="chose_form.start" placeholder="请选择出发地" @change="startSelectChange">
+                            <el-option v-for="(option, index) in options" :key="index" :label="option.label" :value="option.value" />
+                        </el-select>
+                    </el-form-item>
+                    <el-form-item label="目的地">
+                        <el-select v-model="chose_form.end" placeholder="请选择目的地" @change="endSelectChange">
+                            <el-option v-for="(option, index) in options" :key="index" :label="option.label" :value="option.value" />
+                        </el-select>
+                    </el-form-item>
+                    <el-form-item label="出行策略">
+                        <el-select v-model="chose_form.strategy" placeholder="请选择出行策略">
+                            <el-option label="最少费用" value="1"></el-option>
+                            <el-option label="最短时间" value="2"></el-option>
+                            <!--有限时间的最少费用-->
+                            <el-option label="最优方案" value="3"></el-option>
+                        </el-select>
+                    </el-form-item>
+                    <el-form-item label="出行方式">
+                        <el-select v-model="chose_form.way" placeholder="请选择出行方式">
+                            <el-option label="高铁" value="高铁"></el-option>
+                            <el-option label="飞机" value="飞机"></el-option>
+                            <el-option label="汽车" value="汽车"></el-option>
+                        </el-select>
+                    </el-form-item>
+                    <el-form-item label="出发时间">
+                        <el-col :span="11">
+                            <el-date-picker type="date" placeholder="选择日期" v-model="chose_form.start_date1" style="width: 100%;"></el-date-picker>
+                        </el-col>
+                        <el-col class="line" :span="2">-</el-col>
+                        <el-col :span="11">
+                            <el-time-picker placeholder="选择时间" v-model="chose_form.start_date2" style="width: 100%;"></el-time-picker>
+                        </el-col>
+                    </el-form-item>
+                    <el-form-item>
+                        <el-button type="primary" @click="from_onSubmit">立即规划</el-button>
+                        <el-button @click="from_disSubmit">取消</el-button>
+                    </el-form-item>
+                </el-form>
+            </el-tab-pane>
+
+            <el-tab-pane label="路线信息">
+                <el-descriptions title="路线信息" direction="vertical" :column="2" border>
+                    <el-descriptions-item label="出发地">
+                        <el-tag v-text="chose_form.start" effect="dark" type="success"></el-tag>
+                    </el-descriptions-item>
+                    <el-descriptions-item label="目的地" >
+                        <el-tag v-text="chose_form.end" effect="dark" type="success"></el-tag>
+                    </el-descriptions-item>
+                    <el-descriptions-item label="总时间" >
+                        <el-tag v-text="allTime" effect="dark" type="success"></el-tag>
+                    </el-descriptions-item>
+                    <el-descriptions-item label="总时间" >
+                        <el-tag v-text="allFee" effect="dark" type="success"></el-tag>
+                    </el-descriptions-item>
+                    <el-descriptions-item label="中转城市" >
+                        <el-button type="text" @click="lookRoutes">查看</el-button>
+                        <el-dialog title="中转城市" :visible.sync="dialogMidTableVisible">
+                         <el-table :data="routes">
+                            <el-table-column property="startTime" label="始发时间"></el-table-column>
+                            <el-table-column property="arriveTime" label="到达时间" ></el-table-column>
+                            <el-table-column property="trainId" label="车次"></el-table-column>
+                            <el-table-column property="fromCity" label="始发地"></el-table-column>
+                            <el-table-column property="toCity" label="目的地地"></el-table-column>
+                            <el-table-column property="costTime" label="历时"></el-table-column>
+                            <el-table-column property="fee" label="花费"></el-table-column>
+                         </el-table>
+                        </el-dialog>
+                    </el-descriptions-item>
+                    <el-descriptions-item label="时刻表">
+                        <el-button type="text" @click="lookGidData">查看</el-button>
+                        <el-dialog title="时刻表" :visible.sync="dialogTableVisible">
+                            <el-table :data="gridData">
+                                <el-table-column property="start_time" label="始发时间"></el-table-column>
+                                <el-table-column property="end_time" label="到达时间" ></el-table-column>
+                                <el-table-column property="name" label="车次"></el-table-column>
+                                <el-table-column property="start_station" label="始发地"></el-table-column>
+                                <el-table-column property="end_station" label="目的地地"></el-table-column>
+                            </el-table>
+                        </el-dialog>
+                    </el-descriptions-item>
+                </el-descriptions>
+            </el-tab-pane>
+        </el-tabs>
+    </div>
+</div>
+<!--代码区-->
+<script>
+    let vue=new Vue({
+        el:"#app",
+        data(){
+            return{
+                //路线表单
+                chose_form: {
+                    //开始站
+                    start: '',
+                    //目的地
+                    end: '',
+                    //出发日期
+                    start_date1: '',
+                    //出发时间
+                    start_date2: '',
+                    //出行策略
+                    strategy:'',
+                    //出行方式
+                    way:'',
+                },
+                //路线对象(接受规划后的路线）
+                routes:[],
+                //总时间
+                allTime:0,
+                //总路费
+                allFee:0,
+                //时刻表
+                gridData: [],
+                //城市选项
+                options: [],
+                //时刻表dialog
+                dialogTableVisible: false,
+                //中转城市dialog
+                dialogMidTableVisible:false,
+                //地图容器
+                map:null,
+                //获取经纬度对象
+                myGeo:null,
+                //出发位置经纬度
+                startPoint:null,
+                //目的地经纬度
+                endPoint:null,
+                //动画
+                trackAni03:null,
+                //折线对象
+                pl:null,
+            }
+        },
+        mounted(){
+            let map = new BMapGL.Map('container'); // 创建Map实例
+            this.map=map;
+            this.initmap(this.map);
+            let that=this;
+            //获得城市
+            axios({
+                method:'get',
+                url:'http://localhost:80/Test02/getcity'
+            }).then(function (resp){
+                that.options=resp.data;
+            });
+        },
+        methods:{
+            //查看中转城市按钮
+            lookRoutes(){
+                this.dialogMidTableVisible=true;
+            },
+            //查看时刻表按钮
+            lookGidData(){
+                this.dialogTableVisible=true;
+                let that=this;
+                axios({
+                    method:'post',
+                    url:'http://localhost:80/Test02/timeservlet',
+                    data:that.chose_form,
+                }).then(function (resp){
+                    that.gridData=resp.data;
+                });
+            },
+            //出发地改变时
+            startSelectChange(value) {
+                console.log('用户出发地', value);
+            },
+            //目的地改变时
+            endSelectChange(value){
+                console.log('用户到达地', value)
+            },
+            //表单取消函数
+            from_disSubmit(){
+                if (this.trackAni03 != null) {
+                    this.trackAni03.cancel();
+                }
+            },
+            //开始规划函数
+            async from_onSubmit() {
+                this.allFee=0;
+                this.allTime=0;
+                if (this.trackAni03 != null) {
+                    this.trackAni03.cancel();
+                }
+                if(this.pl!=null){
+                    this.map.removeOverlay(this.pl);
+                }
+                console.log(this.chose_form);
+                let that=this;
+                await axios({
+                    method:'post',
+                    url:'http://localhost:80/Test02/trainselect',
+                    data:that.chose_form,
+                }).then(function (resp){
+                    that.routes=resp.data;
+                })
+                this.trackAni03= await this.mapAction();
+                this.allFee = Number(this.allFee.toFixed(2));
+                this.trackAni03.start();
+            },
+            //轨迹动画
+            async mapAction(){
+                let points = [];
+                let _second=0;
+                console.log(this.routes)
+                for (let i = 0; i < this.routes.length; i++) {
+                    if(i===0){
+                        this.routes[i].fee = Number(this.routes[i].fee.toFixed(2));
+                        this.routes[i].costTime = Number(this.routes[i].costTime.toFixed(2));
+                        let spoint =await this.getStartPoint(this.routes[i].fromCity);
+                        let s1point = await this.getStartPoint(this.routes[i].toCity);
+                        this.allFee+=this.routes[i].fee;
+                        _second+=this.routes[i].costTime;
+                        points.push(spoint);
+                        points.push(s1point);
+                    }else {
+                        this.routes[i].fee = Number(this.routes[i].fee.toFixed(2));
+                        this.routes[i].costTime = Number(this.routes[i].costTime.toFixed(2));
+                        let epoint = await this.getStartPoint(this.routes[i].toCity);
+                        this.allFee+=this.routes[i].fee;
+                        points.push(epoint);
+                        _second+=this.routes[i].costTime;
+                    }
+                }
+                console.log(points)
+                this.pl = new BMapGL.Polyline(points,{
+                    strokeColor: 'red',    // 折线颜色
+                    strokeWeight: 3,        // 折线宽度
+                });
+                this.allTime=_second.toFixed(2);
+                let second=_second*10000;
+                let trackAni = new BMapGLLib.TrackAnimation(this.map, this.pl, {
+                    overallView: true, // 动画完成后自动调整视野到总览
+                    tilt: 30,          // 轨迹播放的角度，默认为55
+                    duration: second,   // 动画持续时长，默认为10000，单位ms
+                    delay: 300,      // 动画开始的延迟，默认0，单位ms
+                    zoom: 6
+                });
+                return trackAni;
+            },
+            //初始化地图
+            initmap(map){
+                map.centerAndZoom('西安市', 6); // 初始化地图,设置中心点坐标和地图级别
+                map.enableScrollWheelZoom(true); // 开启鼠标滚轮缩放
+            },
+            //将点转换为坐标
+            async getStartPoint(wei){
+                let myGeo = new BMapGL.Geocoder();
+                let _wei=wei+'站';
+                console.log(wei);
+                let point = await new Promise((resolve, reject) => {
+                    myGeo.getPoint(_wei, function(pt){
+                        if(pt){
+                            resolve(pt);
+                        }else{
+                            reject('您选择的地址没有解析到结果！');
+                        }
+                    }, _wei)
+                });
+                return point;
+            },
+        }
+    });
+</script>
+</body>
+</html>

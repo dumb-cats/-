@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>管理员界面</title>
+
+  <style>
+    .el-table .warning-row {
+      background: oldlace;
+    }
+
+    .el-table .success-row {
+      background: #f0f9eb;
+    }
+  </style>
+
+  <script src="js/vue.js"></script>
+  <script src="js/axios-0.18.0.js"></script>
+  <!-- 引入样式 -->
+  <link href="https://cdn.bootcdn.net/ajax/libs/element-ui/2.15.14/theme-chalk/index.css" rel="stylesheet">
+  <!-- 引入组件库 -->
+  <script src="https://cdn.bootcdn.net/ajax/libs/element-ui/2.15.14/index.js"></script>
+</head>
+<body>
+<div id="app">
+  <template>
+    <el-tabs :tab-position="tabPosition" @tab-click="cardoption" id="city">
+      <el-tab-pane label="城市信息">
+           <el-button type="success" round @click="cityopen">新增</el-button>
+           <el-table
+                  :data="cityTableData"
+                  style="width: 100%">
+            <el-table-column
+                    prop="label"
+                    label="城市">
+            </el-table-column>
+
+            <el-table-column label="操作">
+              <template slot-scope="scope">
+                  <el-button type="danger" icon="el-icon-delete" circle @click="handleClick(scope.row)"></el-button>
+                  <el-button type="primary" icon="el-icon-edit" circle @click="handleClick1(scope.row)"></el-button>
+              </template>
+            </el-table-column>
+          </el-table>
+      </el-tab-pane>
+
+        <el-tab-pane label="路网信息">
+            <el-tabs v-model="activeName" type="card" @tab-click="routeHandleClick">
+                <el-tab-pane label="高铁路线" name="高铁">
+                    <template>
+                        <el-table
+                                :data="trainTableData"
+                                style="width: 100%">
+                            <el-table-column
+                                    fixed
+                                    prop="fromCity"
+                                    label="出发城市">
+                            </el-table-column>
+                            <el-table-column
+                                    prop="toCity"
+                                    label="到达城市">
+                            </el-table-column>
+                            <el-table-column
+                                    fixed="right"
+                                    label="操作"
+                                    width="120">
+                                <template slot-scope="scope">
+                                    <el-button
+                                            @click.native.prevent="trainDeleteRow(scope.row)"
+                                            type="text"
+                                            size="small">
+                                        移除
+                                    </el-button>
+                                </template>
+                            </el-table-column>
+                        </el-table>
+                    </template>
+                </el-tab-pane>
+                <el-tab-pane label="飞机路线" name="飞机">
+                    <template>
+                        <el-table
+                                :data="trainTableData"
+                                style="width: 100%">
+                            <el-table-column
+                                    fixed
+                                    prop="fromCity"
+                                    label="出发城市">
+                            </el-table-column>
+                            <el-table-column
+                                    prop="toCity"
+                                    label="到达城市">
+                            </el-table-column>
+                            <el-table-column
+                                    fixed="right"
+                                    label="操作"
+                                    width="120">
+                                <template slot-scope="scope">
+                                    <el-button
+                                            @click.native.prevent="trainDeleteRow(scope.row)"
+                                            type="text"
+                                            size="small">
+                                        移除
+                                    </el-button>
+                                </template>
+                            </el-table-column>
+                        </el-table>
+                    </template>
+                </el-tab-pane>
+                <el-tab-pane label="汽车路线" name="汽车">
+                    <template>
+                        <el-table
+                                :data="trainTableData"
+                                style="width: 100%">
+                            <el-table-column
+                                    fixed
+                                    prop="fromCity"
+                                    label="出发城市">
+                            </el-table-column>
+                            <el-table-column
+                                    prop="toCity"
+                                    label="到达城市">
+                            </el-table-column>
+                            <el-table-column
+                                    fixed="right"
+                                    label="操作"
+                                    width="120">
+                                <template slot-scope="scope">
+                                    <el-button
+                                            @click.native.prevent="trainDeleteRow(scope.row)"
+                                            type="text"
+                                            size="small">
+                                        移除
+                                    </el-button>
+                                </template>
+                            </el-table-column>
+                        </el-table>
+                    </template>
+                </el-tab-pane>
+            </el-tabs>
+        </el-tab-pane>
+
+        <el-tab-pane label="路网添加" name="addRoute">
+            <el-dialog title="路网添加" :visible.sync="dialogFormVisible">
+                <el-form ref="form" :model="fromRoute">
+                    <el-form-item label="始发地" :label-width="formLabelWidth">
+                        <el-input v-model="fromRoute.fromCity" autocomplete="off"></el-input>
+                    </el-form-item>
+                    <el-form-item label="到达地" :label-width="formLabelWidth">
+                        <el-input v-model="fromRoute.toCity" autocomplete="off"></el-input>
+                    </el-form-item>
+                    <el-form-item label="时间权重" :label-width="formLabelWidth">
+                        <el-input v-model="fromRoute.time" autocomplete="off"></el-input>
+                    </el-form-item>
+                    <el-form-item label="金钱权重" :label-width="formLabelWidth">
+                        <el-input v-model="fromRoute.fee" autocomplete="off"></el-input>
+                    </el-form-item>
+                    <el-form-item label="出行方式" :label-width="formLabelWidth">
+                        <el-select v-model="fromRoute.way" placeholder="请选择出行方式">
+                            <el-option label="高铁" value="高铁"></el-option>
+                            <el-option label="飞机" value="飞机"></el-option>
+                            <el-option label="汽车" value="汽车"></el-option>
+                        </el-select>
+                    </el-form-item>
+                </el-form>
+                    <el-button @click="dialogFormVisible = false">取 消</el-button>
+                    <el-button type="primary" @click="addRoutes">确 定</el-button>
+            </el-dialog>
+        </el-tab-pane>
+
+<!--      <el-tab-pane label="日志信息" >-->
+<!--        <el-button type="success" plain @click="open">清空日志信息</el-button>-->
+<!--         <el-table :data="logTableData" style="width: 100%" :row-class-name="tableRowClassName">-->
+<!--           <el-table-column-->
+<!--                prop="dateTime"-->
+<!--                label="登录日期">-->
+<!--           </el-table-column>-->
+
+<!--           <el-table-column-->
+<!--                prop="username"-->
+<!--                label="账号">-->
+<!--           </el-table-column>-->
+<!--         </el-table>-->
+<!--      </el-tab-pane>-->
+
+<!--      <el-tab-pane label="用户界面" name="user"></el-tab-pane>-->
+    </el-tabs>
+  </template>
+</div>
+<!--代码区-->
+<script>
+  let vue=new Vue({
+    el:'#app',
+    data(){
+      return{
+         //路网信息添加弹窗
+         dialogFormVisible: false,
+         //路网信息添加表单
+        fromRoute:{
+            fromCity:'',
+            toCity:'',
+            time:'',
+            fee:'',
+            way:'',
+          },
+        formLabelWidth: '120px',
+        //路网信息卡片选择
+        activeName: '高铁',
+        //城市信息对象
+        cityTableData: [],
+        //日志信息对象
+        logTableData: [],
+        tabPosition: 'left',
+        //路线信息对象
+        trainTableData: [],
+      }
+    },
+    mounted(){
+      this.getLogTableDate();
+      this.getCityTableDate();
+      this.routeHandleClick();
+    },
+    methods:{
+        //路网添加按钮
+        addRoutes(){
+            this.dialogFormVisible=false;
+            console.log(this.fromRoute);
+            let that=this;
+            axios({
+                method:"post",
+                url:'http://localhost:80/Test02/addroute',
+                data:that.fromRoute
+            }).then(function (resp){
+                let msg=resp.data
+                if (msg===true) {
+                    that.$message({
+                        message: '恭喜你，这是一条成功消息',
+                        type: 'success'
+                    });
+                }
+            })
+        },
+        //路线信息卡片选择（路线信息获得）（完成）
+        routeHandleClick(tab, event) {
+            console.log(this.activeName);
+            let that=this;
+            axios({
+                method:'get',
+                url:'http://localhost:80/Test02/getroute?routename='+that.activeName
+            }).then(function (resp){
+                that.trainTableData=resp.data;
+            })
+        },
+        //高铁路线删除（完成）
+        trainDeleteRow(row){
+           console.log(row.fromCity+' '+row.toCity+' '+this.activeName)
+            let that=this;
+            this.$confirm('此操作将永久删除该数据, 是否继续?', '提示', {
+                confirmButtonText: '确定',
+                cancelButtonText: '取消',
+                type: 'warning'
+            }).then(() => {
+                axios({
+                    method:'get',
+                    url:'http://localhost:80/Test02/deleteroute?' +
+                        'fromCity='+row.fromCity+
+                        '&toCity='+row.toCity+
+                        '&activeName='+that.activeName
+                }).then(function (resp){
+                    if(resp.data===true){
+                        that.$message({type: 'success', message: '删除成功!'});
+                    }else {
+                        that.$message({type:'warning',message:'删除失败!'})
+                    }
+                });
+            }).catch(() => {
+                that.$message({
+                    type: "info",
+                    message: '已取消删除'
+                });
+            });
+        },
+      //城市信息添加(完成)
+      cityopen() {
+        this.$prompt('请输入地址', '提示', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          inputPattern: /[\u4e00-\u9fa5]/gm,
+          inputErrorMessage: '请输入中文'
+        }).then(({ value }) => {
+          let that=this;
+          //新增
+          axios({
+            method:'get',
+            url:'http://localhost:80/Test02/addcity?cityname='+value,
+          }).then(function (resp){
+            if (resp.data===true){
+              that.getCityTableDate();
+              that.$message({
+                type: 'success',
+                message: '新增地址是: ' + value
+              })
+
+            }
+          });
+        }).catch(() => {
+          this.getCityTableDate();
+          this.$message({
+            type: 'info',
+            message: '取消输入'
+          });
+        });
+      },
+      //城市信息移除操作(完成)
+      handleClick(row) {
+        let that=this;
+        this.$confirm('此操作将永久删除该数据, 是否继续?', '提示', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }).then(() => {
+          axios({
+            method:'get',
+            url:'http://localhost:80/Test02/deletcity?cityname='+row.label
+          }).then(function (resp){
+            if(resp.data===true){
+              that.getCityTableDate();
+              that.$message({type: 'success', message: '删除成功!'});
+            }else {
+              that.getCityTableDate();
+              that.$message({type:'warning',message:'删除失败!'})
+            }
+          });
+        }).catch(() => {
+          that.$message({
+            type: "info",
+            message: '已取消删除'
+          });
+        });
+      },
+        handleClick1(row) {
+            let that=this;
+            this.$confirm('此操作将永久删除该数据, 是否继续?', '提示', {
+                confirmButtonText: '确定',
+                cancelButtonText: '取消',
+                type: 'warning'
+            }).then(() => {
+                axios({
+                    method:'get',
+                    url:'http://localhost:80/Test02/deletcity?cityname='+row.label
+                }).then(function (resp){
+                    if(resp.data===true){
+                        that.getCityTableDate();
+                        that.$message({type: 'success', message: '删除成功!'});
+                    }else {
+                        that.getCityTableDate();
+                        that.$message({type:'warning',message:'删除失败!'})
+                    }
+                });
+            }).catch(() => {
+                that.$message({
+                    type: "info",
+                    message: '已取消删除'
+                });
+            });
+        },
+      //选项卡跳转
+      cardoption(tab, event){
+        if (tab.name==='user'){
+          window.location.href="http://localhost:80/Test02/cs03.html";
+        }
+        if(tab.name==='addRoute'){
+            this.dialogFormVisible = true;
+        }
+      },
+      //获取城市对象数据
+      getCityTableDate(){
+        let that=this;
+        //获得城市
+        axios({
+          method:'get',
+          url:'http://localhost:80/Test02/getcity'
+        }).then(function (resp){
+          that.cityTableData=resp.data;
+        });
+      },
+      //获得日志对象数据(完成)
+      getLogTableDate(){
+        let that=this;
+        axios({
+          method:'get',
+          url:'http://localhost:80/Test02/getLogData',
+        }).then(function (resp){
+          that.logTableData=resp.data;
+        })
+      },
+      //日志文件清空按钮(完成)
+      open() {
+        console.log("清空")
+        let that=this;
+        this.$confirm('此操作将永久清空日志信息, 是否继续?', '提示', {
+          confirmButtonText: '确定',
+          cancelButtonText: '取消',
+          type: 'warning'
+        }).then(() => {
+          axios({
+            method: 'post',
+            url: 'http://localhost:80/Test02/deletLogData'
+          }).then(function (resp){
+              that.getLogTableDate();
+              that.$message({type: 'success', message: '删除成功!'});
+          })
+        }).catch(() => {
+          that.$message({
+            type: "info",
+            message: '已取消删除'
+          });
+        });
+      },
+      //颜色控制
+      tableRowClassName({row, rowIndex}) {
+        if (rowIndex%2===1) {
+          return 'success-row';
+        }else {
+          return '';
+        }
+      }
+    }
+  })
+</script>
+</body>
+</html>
